@@ -18,7 +18,10 @@ import {
   Eye,
   FileCheck2,
   FileJson,
-  Code2
+  Code2,
+  ImagePlus,
+  X,
+  Loader2
 } from 'lucide-react';
 import { AnalysisResult, ChatMessage } from '../../types';
 import { sendChatMessage } from '../../services/aiService';
@@ -45,12 +48,28 @@ export const ChatView: React.FC<ChatViewProps> = ({
 }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputPrompt, setInputPrompt] = useState('');
+  const [attachedImage, setAttachedImage] = useState<string | null>(null);
   const [isTyping, setIsTyping] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showJsonModal, setShowJsonModal] = useState(false);
   
   // Dedicated inner container ref to prevent whole-window scroll jumping to footer
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        setAttachedImage(reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
 
   // Initialize conversation with faithful research-prototype format
   useEffect(() => {
@@ -111,22 +130,27 @@ You can ask me to explain pipeline stages, dataset benchmarks (ISIC 2016/2017), 
   }, [messages, isTyping]);
 
   const handleSendMessage = async (textToSend?: string) => {
-    const prompt = (textToSend || inputPrompt).trim();
-    if (!prompt || isTyping) return;
+    const rawPrompt = (textToSend || inputPrompt).trim();
+    if ((!rawPrompt && !attachedImage) || isTyping) return;
+
+    const prompt = rawPrompt || (attachedImage ? 'Please evaluate this skin image and provide a clinical breakdown of its visual characteristics.' : '');
+    const currentImage = attachedImage;
 
     const userMsg: ChatMessage = {
       id: `user-${Date.now()}`,
       role: 'user',
       content: prompt,
+      imageUrl: currentImage || undefined,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
     setMessages(prev => [...prev, userMsg]);
     if (!textToSend) setInputPrompt('');
+    setAttachedImage(null);
     setIsTyping(true);
 
     try {
-      const response = await sendChatMessage(prompt, analysisContext, messages);
+      const response = await sendChatMessage(prompt, analysisContext, messages, currentImage || undefined);
       const assistantMsg: ChatMessage = {
         id: `ai-${Date.now()}`,
         role: 'assistant',
@@ -300,6 +324,15 @@ You can ask me to explain pipeline stages, dataset benchmarks (ISIC 2016/2017), 
               )}
 
               <div className={`max-w-[88%] sm:max-w-[80%] space-y-1 ${isUser ? 'items-end' : 'items-start'}`}>
+                {msg.imageUrl && (
+                  <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
+                    <img 
+                      src={msg.imageUrl} 
+                      alt="Skin photograph" 
+                      className="max-w-[200px] max-h-[140px] rounded-xl object-cover border border-slate-300 dark:border-slate-700 shadow-xs mb-1" 
+                    />
+                  </div>
+                )}
                 <div
                   className={`p-3 rounded-2xl text-xs sm:text-sm leading-relaxed ${
                     isUser
@@ -390,7 +423,36 @@ You can ask me to explain pipeline stages, dataset benchmarks (ISIC 2016/2017), 
       </div>
 
       {/* Input Box */}
-      <div className="p-2.5 bg-slate-50 dark:bg-slate-800/60 border-t border-slate-200 dark:border-slate-800 shrink-0">
+      <div className="p-2.5 bg-slate-50 dark:bg-slate-800/60 border-t border-slate-200 dark:border-slate-800 shrink-0 space-y-2">
+        {/* Attached image preview banner */}
+        {attachedImage && (
+          <div className="flex items-center justify-between p-2 bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800/60 rounded-xl">
+            <div className="flex items-center gap-2.5 overflow-hidden">
+              <img 
+                src={attachedImage} 
+                alt="Attached preview" 
+                className="w-10 h-10 rounded-lg object-cover border border-teal-300 dark:border-teal-700 shrink-0" 
+              />
+              <div className="text-left overflow-hidden">
+                <p className="text-xs font-bold text-teal-900 dark:text-teal-200 truncate">
+                  Skin Image Attached
+                </p>
+                <p className="text-[10px] text-teal-700 dark:text-teal-300 truncate">
+                  Assistant will analyze color, texture, margins & lesion type
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setAttachedImage(null)}
+              className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-teal-100 dark:hover:bg-teal-900/60 transition-colors"
+              title="Remove attached image"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -399,15 +461,33 @@ You can ask me to explain pipeline stages, dataset benchmarks (ISIC 2016/2017), 
           className="flex items-center gap-2"
         >
           <input
+            type="file"
+            ref={fileInputRef}
+            accept="image/*"
+            onChange={handleImageFileChange}
+            className="hidden"
+          />
+
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl transition-colors shrink-0"
+            title="Upload or snap skin image to analyze"
+          >
+            <ImagePlus className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+          </button>
+
+          <input
             type="text"
             value={inputPrompt}
             onChange={(e) => setInputPrompt(e.target.value)}
-            placeholder="Ask DermaAssist about visual features, confidence, or preparing for a doctor visit..."
+            placeholder={attachedImage ? "Add questions about this skin image (or press Send)..." : "Ask DermaAssist about visual features, confidence, or upload an image..."}
             className="flex-1 px-3 py-2 text-xs sm:text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 text-slate-900 dark:text-slate-100 placeholder-slate-400"
           />
+
           <button
             type="submit"
-            disabled={!inputPrompt.trim() || isTyping}
+            disabled={(!inputPrompt.trim() && !attachedImage) || isTyping}
             className="p-2 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white rounded-xl transition-colors shadow-xs shrink-0"
             aria-label="Send question"
           >

@@ -5,7 +5,9 @@ import {
   ShieldCheck, 
   HelpCircle,
   Cpu,
-  Info
+  Info,
+  AlertTriangle,
+  X
 } from 'lucide-react';
 import { ImageUploader } from '../components/upload/ImageUploader';
 import { AnalysisProgressModal } from '../components/analysis/AnalysisProgressModal';
@@ -25,6 +27,7 @@ export const NewAnalysisPage: React.FC<NewAnalysisPageProps> = ({
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [stepMessage, setStepMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleStartAnalysis = async (
     imageSource: File | string,
@@ -32,6 +35,7 @@ export const NewAnalysisPage: React.FC<NewAnalysisPageProps> = ({
     presetCategoryCode?: string
   ) => {
     setIsAnalyzing(true);
+    setErrorMessage(null);
     setCurrentStep(1);
     setStepMessage('Initializing screening pipeline...');
 
@@ -51,7 +55,7 @@ export const NewAnalysisPage: React.FC<NewAnalysisPageProps> = ({
         onAnalysisCompleted(result);
       }, 500);
     } catch (err: any) {
-      alert(`Screening analysis encountered an issue: ${err?.message || 'Please try again.'}`);
+      setErrorMessage(`Screening analysis encountered an issue: ${err?.message || 'Please try again.'}`);
       setIsAnalyzing(false);
     }
   };
@@ -81,6 +85,22 @@ export const NewAnalysisPage: React.FC<NewAnalysisPageProps> = ({
           <span>EfficientNet-B0 Backbone</span>
         </div>
       </div>
+
+      {/* Inline Error Notice if needed */}
+      {errorMessage && (
+        <div className="p-4 rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-200 text-xs flex items-center justify-between gap-3 animate-in fade-in">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+            <span>{errorMessage}</span>
+          </div>
+          <button
+            onClick={() => setErrorMessage(null)}
+            className="p-1 hover:bg-rose-100 dark:hover:bg-rose-900/60 rounded-md transition-colors"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* Medical Safety Disclaimer Strip */}
       <MedicalDisclaimerBanner compact />

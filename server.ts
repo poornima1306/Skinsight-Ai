@@ -16,6 +16,11 @@ const PORT = Number(process.env.PORT) || 3000;
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+// Health Check Endpoint
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', service: 'SkinSight AI' });
+});
+
 // Skin Analysis Endpoint
 app.post('/api/analyze-skin', async (req, res) => {
   try {

@@ -11,8 +11,10 @@ import {
   Cpu, 
   Layers,
   UploadCloud,
-  AlertCircle
+  AlertCircle,
+  Download
 } from 'lucide-react';
+import { generateSkinAnalysisPDF } from '../utils/pdfReportGenerator';
 import { AnalysisResult, AppView, UserProfile } from '../types';
 import { ConfidenceMeter } from '../components/analysis/ConfidenceMeter';
 import { ProbabilityDistribution } from '../components/analysis/ProbabilityDistribution';
@@ -82,13 +84,24 @@ export const AnalysisResultPage: React.FC<AnalysisResultPageProps> = ({
           </button>
 
           {!isUnwanted && (
-            <button
-              onClick={() => onViewReport(analysis)}
-              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors"
-            >
-              <FileText className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
-              <span>Clinical Report</span>
-            </button>
+            <>
+              <button
+                onClick={() => onViewReport(analysis)}
+                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors"
+              >
+                <FileText className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                <span>Clinical Report</span>
+              </button>
+
+              <button
+                onClick={() => generateSkinAnalysisPDF(analysis)}
+                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                title="Download Summary Report PDF for Healthcare Provider"
+              >
+                <Download className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                <span>Download PDF</span>
+              </button>
+            </>
           )}
 
           <button

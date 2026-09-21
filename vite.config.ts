@@ -12,6 +12,12 @@ function geminiApiPlugin(): Plugin {
     name: 'gemini-api-endpoints',
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
+        if (req.url === '/api/health') {
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ status: 'ok', service: 'SkinSight AI' }));
+          return;
+        }
+
         if (req.url === '/api/analyze-skin' && req.method === 'POST') {
           try {
             let body = '';

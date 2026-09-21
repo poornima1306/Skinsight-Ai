@@ -1,6 +1,6 @@
 {
-  "name": "SkinSight AI - AI-Assisted Skin Screening & Guidance",
-  "description": "Professional AI-assisted skin lesion screening, Grad-CAM explainability visualization, interactive medical guidance assistant, and clinical summary reports.",
-  "requestFramePermissions": [],
+  "name": "SkinSight",
+  "description": "AI-assisted skin screening, clinical decision support, and explainability platform with Firebase authentication and real-time cloud persistence.",
+  "requestFramePermissions": ["camera", "geolocation"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

@@ -12,18 +12,38 @@ const STORAGE_KEY_ANALYSES = 'skinsight_analyses_v2_hybrid';
 const STORAGE_KEY_USER = 'skinsight_user_profile_v2';
 const STORAGE_KEY_ACTIVE_DATASET = 'skinsight_active_dataset_key';
 
-// Initialize default user
-const DEFAULT_USER: UserProfile = {
+// Initialize default and guest users
+export const DEFAULT_USER: UserProfile = {
   id: 'usr_derm_pro_991',
   name: 'Alex Morgan',
   email: 'alex.morgan@example.com',
   role: 'Clinician / Screening Specialist',
+  isAdmin: false,
+  isAnonymous: false,
   joinedDate: 'August 2026',
   preferences: {
     theme: 'system',
     modelArchitecture: 'MobileNetV2 + PCA + XceptionNet',
     gradcamColormap: 'jet',
     emailAlerts: true,
+    highRiskAlerts: true,
+    compactView: false
+  }
+};
+
+export const GUEST_USER: UserProfile = {
+  id: '',
+  name: 'Guest User',
+  email: '',
+  role: 'Guest / Screening User',
+  isAdmin: false,
+  isAnonymous: true,
+  joinedDate: 'September 2026',
+  preferences: {
+    theme: 'system',
+    modelArchitecture: 'MobileNetV2 + PCA + XceptionNet',
+    gradcamColormap: 'jet',
+    emailAlerts: false,
     highRiskAlerts: true,
     compactView: false
   }
@@ -381,7 +401,8 @@ export async function runSkinScreeningAnalysis(
 export async function sendChatMessage(
   prompt: string,
   analysisContext?: AnalysisResult | null,
-  chatHistory: ChatMessage[] = []
+  chatHistory: ChatMessage[] = [],
+  directImageBase64?: string
 ): Promise<string> {
   const activeDatasetKey = getActiveDatasetKey();
   const dataset = SUPPORTED_DATASETS[activeDatasetKey] || SUPPORTED_DATASETS.ISIC_2018_HAM10000;
@@ -400,7 +421,7 @@ export async function sendChatMessage(
         prompt,
         analysisContext,
         chatHistory: formattedHistory,
-        imageBase64: analysisContext?.imageUrl || undefined
+        imageBase64: directImageBase64 || analysisContext?.imageUrl || undefined
       })
     });
 

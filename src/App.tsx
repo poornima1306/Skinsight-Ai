@@ -5,7 +5,8 @@ import {
   saveAnalysesToStorage, 
   getUserProfile, 
   saveUserProfile,
-  deleteAnalysisById 
+  deleteAnalysisById,
+  GUEST_USER 
 } from './services/aiService';
 import { Navbar } from './components/layout/Navbar';
 import { Footer } from './components/layout/Footer';
@@ -21,7 +22,16 @@ import { ProfilePage } from './pages/ProfilePage';
 import { TrainEvaluatePage } from './pages/TrainEvaluatePage';
 import { AssistantDrawer } from './components/chatbot/AssistantDrawer';
 import { AuthModal } from './components/modals/AuthModal';
+import { AdminRestrictedView } from './components/common/AdminRestrictedView';
 import { MessageSquare } from 'lucide-react';
+import { 
+  auth, 
+  isUserAdmin, 
+  saveAnalysisToFirestore, 
+  deleteAnalysisFromFirestore,
+  logOutFromFirebase
+} from './services/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 
 export default function App() {
   const [currentView, setCurrentView] = useState<AppView>('landing');
@@ -57,6 +67,31 @@ export default function App() {
     };
     mediaQuery.addEventListener('change', handler);
     return () => mediaQuery.removeEventListener('change', handler);
+  }, []);
+
+  // Listen to Firebase Auth state in realtime
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      if (firebaseUser) {
+        const isAdm = firebaseUser.email?.toLowerCase() === 'k.poornima1310@gmail.com' ||
+          firebaseUser.email?.toLowerCase().includes('admin');
+
+        setUser(prev => {
+          const updated: UserProfile = {
+            ...prev,
+            id: firebaseUser.uid,
+            name: firebaseUser.displayName || prev.name || 'SkinSight Clinician',
+            email: firebaseUser.email || prev.email,
+            avatarUrl: firebaseUser.photoURL || prev.avatarUrl,
+            role: isAdm ? 'Clinician Admin' : prev.role,
+            isAdmin: isAdm || prev.isAdmin
+          };
+          saveUserProfile(updated);
+          return updated;
+        });
+      }
+    });
+    return () => unsubscribe();
   }, []);
 
   const isDarkMode = themeMode === 'dark' || (themeMode === 'system' && systemPrefersDark);
@@ -95,6 +130,7 @@ export default function App() {
     const updated = [newResult, ...analyses.filter(a => a.id !== newResult.id)];
     setAnalyses(updated);
     saveAnalysesToStorage(updated);
+    saveAnalysisToFirestore(newResult, user.id);
     setSelectedAnalysisId(newResult.id);
     setAssistantContextAnalysis(newResult);
     setCurrentView('analysis-result');
@@ -110,6 +146,7 @@ export default function App() {
 
   const handleDeleteAnalysis = (id: string) => {
     deleteAnalysisById(id);
+    deleteAnalysisFromFirestore(id);
     const updated = analyses.filter(a => a.id !== id);
     setAnalyses(updated);
     if (selectedAnalysisId === id) {
@@ -125,6 +162,19 @@ export default function App() {
     setAnalyses([]);
     setSelectedAnalysisId(null);
     setCurrentView('dashboard');
+  };
+
+  const handleLogOut = async () => {
+    try {
+      await logOutFromFirebase();
+    } catch (e) {
+      console.error('Error logging out from Firebase:', e);
+    }
+    setUser(GUEST_USER);
+    saveUserProfile(GUEST_USER);
+    if (currentView === 'train-evaluate') {
+      setCurrentView('dashboard');
+    }
   };
 
   const handleOpenAssistant = (context?: AnalysisResult | null) => {
@@ -148,6 +198,7 @@ export default function App() {
         onNavigateToAnalysis={handleSelectAnalysis}
         user={user}
         onOpenAuthModal={() => setIsAuthModalOpen(true)}
+        onLogOut={handleLogOut}
       />
 
       {/* Main View Router */}
@@ -218,9 +269,17 @@ export default function App() {
         )}
 
         {currentView === 'train-evaluate' && (
-          <TrainEvaluatePage
-            onNavigateToScreening={() => handleNavigate('new-analysis')}
-          />
+          isUserAdmin(user) ? (
+            <TrainEvaluatePage
+              onNavigateToScreening={() => handleNavigate('new-analysis')}
+            />
+          ) : (
+            <AdminRestrictedView
+              user={user}
+              onOpenAuthModal={() => setIsAuthModalOpen(true)}
+              onNavigateToDashboard={() => handleNavigate('dashboard')}
+            />
+          )
         )}
 
         {currentView === 'assistant' && (
@@ -241,6 +300,7 @@ export default function App() {
             }}
             onClearAllHistory={handleClearAllHistory}
             onNavigateToScreening={() => handleNavigate('new-analysis')}
+            onLogOut={handleLogOut}
           />
         )}
       </main>
@@ -270,6 +330,8 @@ export default function App() {
       <AuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
+        currentUser={user}
+        onLogOut={handleLogOut}
         onSuccess={(loggedUser) => {
           setUser(loggedUser);
           saveUserProfile(loggedUser);

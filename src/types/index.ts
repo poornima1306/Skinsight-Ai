@@ -133,6 +133,12 @@ export interface LocalizationStage {
     ymax: number; // 0-1
     xmax: number; // 0-1
   };
+  roiBox?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
   detectionConfidence: number; // 0-1
   aspectRatio: number;
   estimatedAreaMm2: number;
@@ -225,6 +231,7 @@ export interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: string;
+  imageUrl?: string;
   analysisContextId?: string;
   suggestedQuestions?: string[];
   feedback?: 'like' | 'dislike';
@@ -239,6 +246,8 @@ export interface UserProfile {
   email: string;
   avatarUrl?: string;
   role: string;
+  isAdmin?: boolean;
+  isAnonymous?: boolean;
   joinedDate: string;
   preferences: {
     theme: ThemeMode;

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   CheckCircle, 
   XCircle, 
@@ -10,9 +10,13 @@ import {
   MessageSquarePlus,
   MapPin,
   Star,
-  ExternalLink
+  ExternalLink,
+  Download,
+  FileText,
+  Loader2
 } from 'lucide-react';
 import { AnalysisResult } from '../../types';
+import { generateSkinAnalysisPDF } from '../../utils/pdfReportGenerator';
 
 interface InterpretationCardProps {
   analysis: AnalysisResult;
@@ -26,6 +30,19 @@ export const InterpretationCard: React.FC<InterpretationCardProps> = ({
   onOpenFindDoctor
 }) => {
   const { prediction } = analysis;
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+
+  const handleDownloadPdf = () => {
+    setIsGeneratingPdf(true);
+    try {
+      generateSkinAnalysisPDF(analysis);
+    } catch (err) {
+      console.error('Failed to generate PDF:', err);
+      alert('Unable to generate PDF report at this time. Please try again.');
+    } finally {
+      setTimeout(() => setIsGeneratingPdf(false), 800);
+    }
+  };
 
   return (
     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 sm:p-6 shadow-sm space-y-6">
@@ -82,17 +99,33 @@ export const InterpretationCard: React.FC<InterpretationCardProps> = ({
 
       {/* Action triggers */}
       <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
-        <button
-          onClick={onOpenAssistant}
-          className="w-full sm:w-auto px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer"
-        >
-          <MessageSquarePlus className="w-4 h-4 text-teal-600 dark:text-teal-400" />
-          <span>Ask AI Assistant About This Result</span>
-        </button>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <button
+            onClick={onOpenAssistant}
+            className="flex-1 sm:flex-initial px-3.5 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+          >
+            <MessageSquarePlus className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+            <span>Ask AI Assistant</span>
+          </button>
+
+          <button
+            onClick={handleDownloadPdf}
+            disabled={isGeneratingPdf}
+            className="flex-1 sm:flex-initial px-3.5 py-2 bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-xs disabled:opacity-50"
+            title="Generate & download summary report as PDF to share with a healthcare professional"
+          >
+            {isGeneratingPdf ? (
+              <Loader2 className="w-4 h-4 animate-spin text-teal-400" />
+            ) : (
+              <Download className="w-4 h-4 text-teal-400" />
+            )}
+            <span>{isGeneratingPdf ? 'Generating PDF...' : 'Download PDF Summary'}</span>
+          </button>
+        </div>
 
         <button
           onClick={onOpenFindDoctor}
-          className="w-full sm:w-auto px-4 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-sm hover:shadow transition-all cursor-pointer"
+          className="w-full sm:w-auto px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-sm hover:shadow transition-all cursor-pointer"
         >
           <MapPin className="w-4 h-4 text-amber-300" />
           <span>Find Nearby High-Rated Skin Care Centers</span>
